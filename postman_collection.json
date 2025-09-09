@@ -1,0 +1,201 @@
+{
+  "info": {
+    "name": "Riot Crypto API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_postman_id": "riot-crypto-api-collection"
+  },
+  "item": [
+    {
+      "name": "Health - Live",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/health/live"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Live is OK\", function () {",
+              "  pm.response.to.have.status(200);",
+              "  pm.expect(pm.response.json().status).to.eql('ok');",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Health - Ready",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/health/ready"
+      }
+    },
+    {
+      "name": "Encrypt",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "url": "{{baseUrl}}/encrypt",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"John Doe\",\n  \"age\": 30,\n  \"contact\": {\n    \"email\": \"john@example.com\",\n    \"phone\": \"123-456-7890\"\n  }\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "// Basic checks",
+              "pm.test(\"Encrypt OK\", function () {",
+              "  pm.response.to.have.status(200);",
+              "  const body = pm.response.json();",
+              "  pm.expect(typeof body.name).to.eql('string');",
+              "  pm.expect(typeof body.age).to.eql('string');",
+              "  pm.expect(typeof body.contact).to.eql('string');",
+              "});",
+              "",
+              "// Save encrypted payload for Decrypt",
+              "pm.collectionVariables.set('enc_payload', pm.response.text());"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Decrypt (from previous Encrypt)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "url": "{{baseUrl}}/decrypt",
+        "body": {
+          "mode": "raw",
+          "raw": "{{enc_payload}}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Decrypt OK + round-trip\", function () {",
+              "  pm.response.to.have.status(200);",
+              "  const original = {",
+              "    name: 'John Doe',",
+              "    age: 30,",
+              "    contact: { email: 'john@example.com', phone: '123-456-7890' }",
+              "  };",
+              "  pm.expect(pm.response.json()).to.eql(original);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Sign",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "url": "{{baseUrl}}/sign",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"message\": \"Hello World\",\n  \"timestamp\": 1616161616\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Sign returns signature\", function () {",
+              "  pm.response.to.have.status(200);",
+              "  const sig = pm.response.json().signature;",
+              "  pm.expect(typeof sig).to.eql('string');",
+              "  pm.collectionVariables.set('signature', sig);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Verify (valid)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "url": "{{baseUrl}}/verify",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"signature\": \"{{signature}}\",\n  \"data\": {\n    \"message\": \"Hello World\",\n    \"timestamp\": 1616161616\n  }\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "// 204 No Content: ne pas tenter de parser un body",
+              "pm.test(\"Verify valid -> 204\", function () {",
+              "  pm.response.to.have.status(204);",
+              "  pm.expect(pm.response.text()).to.eql('');",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Verify (tampered)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "url": "{{baseUrl}}/verify",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"signature\": \"{{signature}}\",\n  \"data\": {\n    \"message\": \"Goodbye World\",\n    \"timestamp\": 1616161616\n  }\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Verify tampered -> 400\", function () {",
+              "  pm.response.to.have.status(400);",
+              "  const b = pm.response.json();",
+              "  pm.expect(b).to.have.property('error');",
+              "  pm.expect(b).to.have.property('code');",
+              "});"
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8000" },
+    { "key": "signature", "value": "" },
+    { "key": "enc_payload", "value": "" }
+  ]
+}
